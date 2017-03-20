@@ -3,7 +3,8 @@ function SaveData()
 {
 	TextToSend = document.getElementById("send").value;
 	document.getElementById("send").value = "";
-	document.getElementById("Reciever").innerHTML += TextToSend+"\n";
+	if(TextToSend!=="")
+		document.getElementById("Reciever").innerHTML += TextToSend+"\n";
 }
 
 
