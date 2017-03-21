@@ -4,20 +4,24 @@
 	clear: left;
 	background-color: blue;
 	min-height: 95%;
+	max-height: 95%;
 	min-width: 50%;
 	max-width: 50%;
+	padding-top: 1%;
 }
-
 .recieve
 {
 	float:left;
 	clear: right;
 	background-color: red;
 	min-height: 95%;
+	max-height: 95%;
 	min-width: 50%;
 	max-width: 50%;
+	text-align: center;
+	padding-top: 1%;
+	overflow-y: auto;
 }
-
 .client
 {
 	margin-left: 25%;
@@ -30,6 +34,12 @@
 }
 textarea{
 	resize: none;
+	min-width: 100%;
+	min-height: 20%;
+	max-height: 90%;
+	width: auto;
+	height: auto;
+	overflow: auto;
 }
 .Connection
 {
@@ -49,4 +59,11 @@ textarea{
 body
 {
 	background-color: gold;
+	font-family: Times, Arial, sans-serif;
+}
+#Messages
+{
+	color: white;
+	background-color: black;
+	padding: 1%;
 }

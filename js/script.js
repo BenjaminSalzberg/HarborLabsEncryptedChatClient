@@ -101,8 +101,7 @@ function handleReceiveChannelStatusChange(event) {
 
 function sendMessage() {
 	var TextToSend = messageInputBox.value;
-	TextToSend = TextToSend.replace(String.fromCharCode(10), "<br />");
-
+	TextToSend = TextToSend.replace(new RegExp(String.fromCharCode(10), "g"), "<br />");
 	sendChannel.send(TextToSend);
 	messageInputBox.value = "";
 	messageInputBox.focus();
@@ -110,22 +109,19 @@ function sendMessage() {
 
 function UserSend() {
 	var TextToSend = messageInputBox.value;
-	TextToSend = TextToSend.replace(String.fromCharCode(10), "<br />");
+	TextToSend = TextToSend.replace(RegExp(String.fromCharCode(10), "g"), "<br />");
 	var element = document.createElement("div");
-	var txtNode = document.createTextNode(TextToSend);
 	element.className = "Sent";
-	element.appendChild(txtNode);
+	element.innerHTML = TextToSend;
 	receiveBox.appendChild(element);
 	messageInputBox.value = "";
 	messageInputBox.focus();
 }
 
-
 function handleReceiveMessage(event) {
 	var element = document.createElement("div");
-	var txtNode = document.createTextNode(event.data);
 	element.className = "Recieved";
-	element.appendChild(txtNode);
+	element.innerHTML = event.data;
 	receiveBox.appendChild(element);
 }
 
