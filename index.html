@@ -6,16 +6,29 @@
 	<body>
 
 
-		<div class = "send">
-			<textarea id="send" rows="10" cols="50" placeholder="Input Here"></textarea>
-			<br>
-			<button id="Sender" onclick="SaveData()">Send</button>
+		<div class="Connection">
+			<button id="connectButton" name="connectButton" class="buttonleft">
+				Connect
+			</button>
+			<button id="disconnectButton" name="disconnectButton" class="buttonright" disabled>
+				Disconnect
+			</button>
 		</div>
-		
+		<div class="client">
+			<div class = "sender">
+				<textarea id="send" rows="10" cols="50" placeholder="Input Here" inputmode="latin" disabled></textarea>
+				<br>
+				<button id="Sender">Send</button>
+				<button id="User">USER Send</button>
+			</div>
+			
+			<div class = "recieve" id="receivebox">
+				Messages received:
+			</div>
 
-
-		<div class = "recieve">
-			<textarea id="Reciever" rows="50" cols="60" disabled="disabled"></textarea>
+			<!--<div class = "recieve">
+				<textarea id="Reciever" rows="50" cols="60" disabled></textarea>
+			</div>-->
 		</div>
 
 
@@ -24,6 +37,6 @@
 
 
 
-		<script src="js/script.js"></script>
+		<script src="js/script.js" defer></script>
 	</body>
 </html>

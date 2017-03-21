@@ -1,24 +1,53 @@
-.send
+.sender
 {
 	float:left;
 	clear: left;
+	background-color: blue;
+	min-height: 95%;
+	min-width: 50%;
+	max-width: 50%;
 }
 
 .recieve
 {
-	float:right;
+	float:left;
 	clear: right;
+	background-color: red;
+	min-height: 95%;
+	min-width: 50%;
+	max-width: 50%;
 }
 
-body
+.client
 {
 	margin-left: 25%;
 	margin-right: 25%;
+	background-color: grey;
 }
-button
+.client button
 {
 	margin-left: 40%;
 }
 textarea{
 	resize: none;
+}
+.Connection
+{
+	text-align: middle;
+	margin:0 auto;
+	display:block;
+}
+.Recieved
+{
+	color: black;
+	text-align: right;
+}
+.Sent
+{
+	color:white;
+	text-align: left;
+}
+body
+{
+	background-color: gold;
 }
