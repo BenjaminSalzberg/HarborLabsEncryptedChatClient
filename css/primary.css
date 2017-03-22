@@ -46,12 +46,12 @@ textarea{
 	text-align: middle;
 	margin:0 auto;
 }
-.Recieved
+.Sent
 {
 	color: black;
 	text-align: right;
 }
-.Sent
+.Recieved
 {
 	color:white;
 	text-align: left;
