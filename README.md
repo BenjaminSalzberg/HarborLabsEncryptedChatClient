@@ -14,6 +14,7 @@ This is a project in which I learn to make use of WebRTC.
 
 ## Acknowledgments
 
-* Dr. Avi Rubin
-* Harbor Labs staff
+* [Dr. Avi Rubin](http://www.avirubin.com/Avi_Rubins_home_page/Home.html)
+* [Mike Rushanan](https://cs.jhu.edu/~micharu1/michaelrushanan.org/)
+* [Harbor Labs staff](http://harborlabs.com/)
 * Many online tools and resources
