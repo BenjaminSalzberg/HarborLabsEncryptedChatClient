@@ -1,0 +1,28 @@
+body {
+	font-family: sans-serif;
+	margin: 0;
+	background-color: grey;
+}
+
+video {
+	max-width: 49%;
+	min-width: 40%;
+}
+textarea
+{
+	resize: none;
+	min-width: 40%;
+	max-width: 50%;
+	height: auto;
+	overflow: auto;
+	margin: 0;
+	padding: 0;
+}
+#inputText
+{
+	height: 3em;
+}
+.hold_info
+{ 
+	height: 10em;
+}
