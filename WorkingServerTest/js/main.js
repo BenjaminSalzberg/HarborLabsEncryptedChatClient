@@ -77,7 +77,7 @@ socket.on('message', function(message) {
 var localVideo = document.querySelector('#localVideo');
 var remoteVideo = document.querySelector('#remoteVideo');
 navigator.mediaDevices.getUserMedia({
-	audio: false,
+	audio: true,
 	video: true
 })
 .then(gotStream)
@@ -94,7 +94,8 @@ function gotStream(stream) {
 	}
 }
 var constraints = {
-	video: true
+	video: true,
+	audio: true
 };
 console.log('Getting user media with constraints', constraints);
 if (location.hostname !== 'localhost') {
