@@ -173,8 +173,10 @@ function doCall() {
 	pc.ondatachannel = function(event) {
 		var receiveChannel = event.channel;
 		receiveChannel.onmessage = function(event) {
-			console.log("received message: " + event.data);
-			document.getElementById("receiveText").innerHTML = event.data;
+			var received = event.data;
+			console.log("received message: " + received);
+			received = AesDecrypt(received);
+			document.getElementById("receiveText").innerHTML += (event.data + "\n");
 		};
 	};
 	document.getElementById("sendData").onclick = function() {
@@ -184,6 +186,8 @@ function doCall() {
 			document.getElementById("inputText").value="";
 			console.log("sent message: " + data);
 			document.getElementById("sentText").innerHTML += (data + "\n");
+			data = AesEncrypt(data);
+			console.log("sent ciphertext " + data)
 			sendChannel.send(data);
 		}
 	};
@@ -203,7 +207,10 @@ function doCalls() {
 	pc.ondatachannel = function(event) {
 		var receiveChannel = event.channel;
 		receiveChannel.onmessage = function(event) {
-			console.log("received message: " + event.data);
+			var received = event.data;
+			console.log("received message: " + received);
+			received = AesDecrypt(received);
+			console.log(received);
 			document.getElementById("receiveText").innerHTML += (event.data + "\n");
 		};
 	};
@@ -212,13 +219,48 @@ function doCalls() {
 		if(data===""){}
 		else{
 			document.getElementById("inputText").value="";
-			console.log("sent message: " + data);
 			document.getElementById("sentText").innerHTML += (data + "\n");
+			data = AesEncrypt(data);
+			console.log("sent ciphertext " + data)
 			sendChannel.send(data);
 		}
 	};
 	var dataChannel = pc.createDataChannel("chat", dataChannelParams);
 	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
+}
+
+var key = [0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff];
+
+var p = sjcl.json.defaults; 
+var iv  = new Uint8Array(16);//initialization vector
+for (var i = 0; i < iv.length; ++i) {
+	iv[i] = 0;//make it all equal to zero
+}
+p.iv = sjcl.codec.bytes.toBits(iv);//makes bytes to bits
+p.salt = [];//randomness
+p.mode = "cbc";//cipher block chaining
+
+
+function AesEncrypt(plaintext)
+{
+	//var aes_encrypter = new sjcl.cipher.aes(key);
+	p = { adata:"",
+		iter:0,
+		mode:"CCM",
+		ts:64,
+		ks:256 
+	};
+	var rp = {};
+	ciphertext = sjcl.encrypt(key, plaintext, p, rp);
+	return ciphertext;
+}
+function AesDecrypt(ciphertext)
+{
+	var aes_decrypter = new sjcl.cipher.aes(key);
+	var rp = {};
+	ciphertext = sjcl.codec.base64.toBits(ciphertext);
+	plaintext = sjcl.codec.utf8String.fromBits(sjcl.mode.ccm.decrypt(aes, ciphertext, iv));
+	return plaintext;
 }
 function doAnswer() {
 	console.log('Sending answer to peer.');
