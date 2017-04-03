@@ -229,37 +229,34 @@ function doCalls() {
 	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
 }
 
-var key = [0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff];
-
-var p = sjcl.json.defaults; 
-var iv  = new Uint8Array(16);//initialization vector
-for (var i = 0; i < iv.length; ++i) {
-	iv[i] = 0;//make it all equal to zero
-}
-p.iv = sjcl.codec.bytes.toBits(iv);//makes bytes to bits
-p.salt = [];//randomness
-p.mode = "cbc";//cipher block chaining
-
-
+var key = [0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff];//256 bits
+//block size should be 128
 function AesEncrypt(plaintext)
 {
+	var iv = new Uint8Array([122, 175, 176, 17, 112, 24, 20, 12, 154, 100, 145, 35, 122, 128, 114, 251]);//initialization vector
 	//var aes_encrypter = new sjcl.cipher.aes(key);
-	p = { adata:"",
-		iter:0,
-		mode:"CCM",
-		ts:64,
-		ks:256 
-	};
-	var rp = {};
-	ciphertext = sjcl.encrypt(key, plaintext, p, rp);
+	var kbits = sjcl.codec.arrayBuffer.toBits(iv.buffer); 
+	console.log("hi");
+	var aes = new sjcl.cipher.aes(kbits); 
+	sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."]();
+	var ciphertext = sjcl.mode.cbc.encrypt(aes, plaintext, sjcl.codec.bytes.toBits(iv));
+	console.log(plaintext);
+	console.log(ciphertext);
+	var ciphertextuintarr = new Uint8Array(ciphertext);
+	console.log(ciphertextuintarr.length);
+	console.log(sjcl.bitArray.bitLength(ciphertextuintarr));
+	var plaintext = sjcl.mode.cbc.decrypt(aes, sjcl.codec.arrayBuffer.toBits(ciphertextuintarr.buffer)-1, sjcl.codec.bytes.toBits(iv));
+	console.log(plaintext);
 	return ciphertext;
 }
 function AesDecrypt(ciphertext)
 {
+	var iv = new Uint8Array([122, 175, 176, 17, 112, 24, 20, 12, 154, 100, 145, 35, 122, 128, 114, 251]);//initialization vector
 	var aes_decrypter = new sjcl.cipher.aes(key);
-	var rp = {};
-	ciphertext = sjcl.codec.base64.toBits(ciphertext);
-	plaintext = sjcl.codec.utf8String.fromBits(sjcl.mode.ccm.decrypt(aes, ciphertext, iv));
+	//var ciphertext = sjcl.codec.utf8String.fromBits(ciphertext);
+	sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."]();
+	var plaintext = sjcl.mode.cbc.decrypt(aes_decrypter, ciphertext, sjcl.codec.bytes.toBits(iv));
+	//sjcl.codec.utf8String.fromBits(sjcl.mode.cbc.decrypt(aes, ciphertext, iv));
 	return plaintext;
 }
 function doAnswer() {
