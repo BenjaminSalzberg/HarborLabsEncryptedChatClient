@@ -229,23 +229,23 @@ function doCalls() {
 	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
 }
 
-var key = [0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff];//256 bits
+var key = "654a1661a99a6b3abf52e52a4e951491";
+//var key = [0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff];//256 bits
 //block size should be 128
 function AesEncrypt(plaintext)
 {
-	var iv = new Uint8Array([122, 175, 176, 17, 112, 24, 20, 12, 154, 100, 145, 35, 122, 128, 114, 251]);//initialization vector
-	//var aes_encrypter = new sjcl.cipher.aes(key);
-	var kbits = sjcl.codec.arrayBuffer.toBits(iv.buffer); 
-	console.log("hi");
-	var aes = new sjcl.cipher.aes(kbits); 
+	//var iv = new Uint8Array([122, 175, 176, 17, 112, 24, 20, 12, 154, 100, 145, 35, 122, 128, 114, 251]);//initialization vector
+	var iv = "bfd3814678afe0036efa67ca8da44e2e";
+	iv = sjcl.codec.hex.toBits(iv);
+	var aes_encrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));
 	sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."]();
-	var ciphertext = sjcl.mode.cbc.encrypt(aes, plaintext, sjcl.codec.bytes.toBits(iv));
+	var ciphertext = sjcl.mode.cbc.encrypt(aes_encrypter, plaintext, iv);
 	console.log(plaintext);
 	console.log(ciphertext);
 	var ciphertextuintarr = new Uint8Array(ciphertext);
 	console.log(ciphertextuintarr.length);
 	console.log(sjcl.bitArray.bitLength(ciphertextuintarr));
-	var plaintext = sjcl.mode.cbc.decrypt(aes, sjcl.codec.arrayBuffer.toBits(ciphertextuintarr.buffer)-1, sjcl.codec.bytes.toBits(iv));
+	var plaintext = sjcl.mode.cbc.decrypt(aes_encrypter, sjcl.codec.arrayBuffer.toBits(ciphertextuintarr.buffer), iv);
 	console.log(plaintext);
 	return ciphertext;
 }
