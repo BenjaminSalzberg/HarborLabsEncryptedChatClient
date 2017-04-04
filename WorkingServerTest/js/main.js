@@ -51,7 +51,13 @@ function sendMessage(message) {
 	socket.emit('message', message);
 }
 // This client receives a message
+var keydefined = false;
 socket.on('message', function(message) {
+	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("The Key Is"))
+	{
+		key = message.substr(10);
+		keydefined = true;
+	}
 	console.log('Client received message:', message);
 	if (message === 'got user media') {
 		maybeStart();
@@ -116,6 +122,7 @@ function maybeStart() {
 		isStarted = true;
 		console.log('isInitiator', isInitiator);
 		if (isInitiator) {
+			sendMessage("The Key Is"+key);
 			doCall();
 		}
 		else
@@ -128,6 +135,7 @@ window.onbeforeunload = function() {
 	sendMessage('bye');
 };
 /////////////////////////////////////////////////////////
+var key;
 function createPeerConnection() {
 	try {
 		pc = new RTCPeerConnection(null);
@@ -135,11 +143,23 @@ function createPeerConnection() {
 		pc.onaddstream = handleRemoteStreamAdded;
 		pc.onremovestream = handleRemoteStreamRemoved;
 		console.log('Created RTCPeerConnnection');
+		if(isInitiator)
+		{
+			key = generatesessionkey();
+		}
 	} catch (e) {
 		console.log('Failed to create PeerConnection, exception: ' + e.message);
 		alert('Cannot create RTCPeerConnection object.');
 		return;
 	}
+}
+function generatesessionkey()
+{
+	var key = "";
+	var possible = "0a1b2c3d4f5e6789";
+	for(var i=0; i < 32; i++)
+		key += possible.charAt(Math.floor(Math.random() * possible.length));
+	return key;
 }
 function handleIceCandidate(event) {
 	console.log('icecandidate event: ', event);
@@ -162,14 +182,8 @@ function handleRemoteStreamAdded(event) {
 function handleCreateOfferError(event) {
 	console.log('createOffer() error: ', event);
 }
-function doCall() {
-	console.log('Sending offer to peer');
-	//create channel for chat
-	var dataChannelParams = {
-		reliable: true,
-		ordered: true
-	};
-	var sendChannel = pc.createDataChannel("chat", dataChannelParams);
+function datasend()
+{
 	pc.ondatachannel = function(event) {
 		var receiveChannel = event.channel;
 		receiveChannel.onmessage = function(event) {
@@ -190,12 +204,22 @@ function doCall() {
 			sendChannel.send(data);
 		}
 	};
+}
+var sendChannel;
+function doCall() {
+	console.log('Sending offer to peer');
+	//create channel for chat
+	var dataChannelParams = {
+		reliable: true,
+		ordered: true
+	};
+	sendChannel = pc.createDataChannel("chat", dataChannelParams);
+	datasend();
 	var dataChannel = pc.createDataChannel("chat", dataChannelParams);
 	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
 }
-
 sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."]();//initializes cbc
-var key = "654a1661a99a6b3abf52e52a4e951491";//must be in hexadecimal
+//key = "654a1661a99a6b3abf52e52a4e951491";//must be in hexadecimal
 var iv="";//must be in hexadecimal
 function AesEncrypt(plaintext)
 {
@@ -208,20 +232,41 @@ function AesEncrypt(plaintext)
 function getiv()//128 bytes = 32 hex digits long 16^32 combinations
 {
 	var testiv = "";
-	var possible = "0123456789abcdef";
+	var possible = "0a1b2c3d4f5e6789";
 	for( var i=0; i < 32; i++)
 		testiv += possible.charAt(Math.floor(Math.random() * possible.length));
-	console.log(testiv);
-	//need to store ivs and then check the database
-
-	alreadyused=false;
+	//need to check the database
+	var alreadyused = checksessionStorage(testiv);
 	if(alreadyused)
 		getiv();
 	else
 	{
 		//store testiv in database
+		storeinsessionStorage(testiv);
 		return testiv;
 	}
+}
+function checksessionStorage(test)
+{
+	if(sessionStorage.getItem("IV")!==null)
+	{
+		var ivarr = sessionStorage.getItem("IV").split(",");
+		for(var i=0;i<ivarr.length;i++)
+		{
+			if(ivarr===test)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+function storeinsessionStorage(iv)
+{
+	if(sessionStorage.getItem("IV")!==null)
+		sessionStorage.setItem("IV", sessionStorage.getItem("IV")+iv+",");
+	else
+		sessionStorage.setItem("IV", iv+",");
 }
 function AesDecrypt(ciphertext)
 {
@@ -230,6 +275,9 @@ function AesDecrypt(ciphertext)
 	ciphertext = ciphertext.substr(32).split(",");//split into an array rather than a String also seperate from iv
 	var plaintext = sjcl.mode.cbc.decrypt(aes_decrypter, ciphertext, sjcl.codec.hex.toBits(iv));
 	plaintext = sjcl.codec.utf8String.fromBits(plaintext);//convert from the bits that decrypt gives to a String
+	//store iv
+	if(checksessionStorage(iv))
+		storeinsessionStorage(iv);
 	return plaintext;
 }
 function doAnswer() {
