@@ -120,7 +120,7 @@ function maybeStart() {
 		}
 		else
 		{
-			doCalls();
+			doCall();
 		}
 	}
 }
@@ -176,40 +176,6 @@ function doCall() {
 			var received = event.data;
 			console.log("received message: " + received);
 			received = AesDecrypt(received);
-			document.getElementById("receiveText").innerHTML += (event.data + "\n");
-		};
-	};
-	document.getElementById("sendData").onclick = function() {
-		var data = document.getElementById("inputText").value;
-		if(data===""){}
-		else{
-			document.getElementById("inputText").value="";
-			console.log("sent message: " + data);
-			document.getElementById("sentText").innerHTML += (data + "\n");
-			data = AesEncrypt(data);
-			console.log("sent ciphertext " + data)
-			sendChannel.send(data);
-		}
-	};
-	var dataChannel = pc.createDataChannel("chat", dataChannelParams);
-	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
-}
-
-
-function doCalls() {
-	console.log('Sending offer to peer');
-	//create channel for chat
-	var dataChannelParams = {
-		reliable: true,
-		ordered: true
-	};
-	var sendChannel = pc.createDataChannel("chat", dataChannelParams);
-	pc.ondatachannel = function(event) {
-		var receiveChannel = event.channel;
-		receiveChannel.onmessage = function(event) {
-			var received = event.data;
-			console.log("received message: " + received);
-			received = AesDecrypt(received);
 			document.getElementById("receiveText").innerHTML += (received + "\n");
 		};
 	};
@@ -228,28 +194,42 @@ function doCalls() {
 	pc.createOffer(setLocalAndSendMessage, handleCreateOfferError);
 }
 
-
-
-sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."]();
-var key = "654a1661a99a6b3abf52e52a4e951491";
-var iv = "bfd3814678afe0036efa67ca8da44e2e";
-//var key = [0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff,0xffffffff];//256 bits
-//block size should be 128
+sjcl.beware["CBC mode is dangerous because it doesn't protect message integrity."]();//initializes cbc
+var key = "654a1661a99a6b3abf52e52a4e951491";//must be in hexadecimal
+var iv="";//must be in hexadecimal
 function AesEncrypt(plaintext)
 {
-	var aes_encrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));
-	iv = sjcl.codec.hex.toBits(iv);
+	iv = getiv();
+	var aes_encrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));//encrypter
 	plaintext = sjcl.codec.utf8String.toBits(plaintext);
-	var ciphertext = sjcl.mode.cbc.encrypt(aes_encrypter, plaintext, iv);
-	return ciphertext;
+	var ciphertext = sjcl.mode.cbc.encrypt(aes_encrypter, plaintext, sjcl.codec.hex.toBits(iv));
+	return iv+""+ciphertext;
+}
+function getiv()//128 bytes = 32 hex digits long 16^32 combinations
+{
+	var testiv = "";
+	var possible = "0123456789abcdef";
+	for( var i=0; i < 32; i++)
+		testiv += possible.charAt(Math.floor(Math.random() * possible.length));
+	console.log(testiv);
+	//need to store ivs and then check the database
+
+	alreadyused=false;
+	if(alreadyused)
+		getiv();
+	else
+	{
+		//store testiv in database
+		return testiv;
+	}
 }
 function AesDecrypt(ciphertext)
 {
-	var aes_decrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));
-	iv = sjcl.codec.hex.toBits(iv);
-	ciphertext = ciphertext.split(",");
-	var plaintext = sjcl.mode.cbc.decrypt(aes_decrypter, ciphertext, iv);
-	plaintext = sjcl.codec.utf8String.fromBits(plaintext);
+	var aes_decrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));//decrypter
+	iv=ciphertext.substr(0,32);//get iv seperated from cphertext
+	ciphertext = ciphertext.substr(32).split(",");//split into an array rather than a String also seperate from iv
+	var plaintext = sjcl.mode.cbc.decrypt(aes_decrypter, ciphertext, sjcl.codec.hex.toBits(iv));
+	plaintext = sjcl.codec.utf8String.fromBits(plaintext);//convert from the bits that decrypt gives to a String
 	return plaintext;
 }
 function doAnswer() {
