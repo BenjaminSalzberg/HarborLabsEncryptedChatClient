@@ -51,12 +51,17 @@ function sendMessage(message) {
 	socket.emit('message', message);
 }
 // This client receives a message
-var keydefined = false;
+var AESkeydefined = false, ELGReceiveddefined = false;
 socket.on('message', function(message) {
 	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("The Key Is"))
 	{
 		AESkey = message.substr(10);
-		keydefined = true;
+		AESkeydefined = true;
+	}
+	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("Elg pub Is"))
+	{
+		elg_recieved_key = message.substr(10);
+		ELGReceiveddefined = true;
 	}
 	console.log('Client received message:', message);
 	if (message === 'got user media') {
@@ -123,6 +128,7 @@ function maybeStart() {
 		}
 		else
 		{
+			sendMessage("Elg pub Is"+elg_public_key);
 			doCall();
 		}
 	}
@@ -142,6 +148,7 @@ function createPeerConnection() {
 		if(isInitiator)
 		{
 			AESkey = generateAESkey();
+			AESkey = EncryptAESKey();
 		}
 		GenerateKeys();
 	} catch (e) {
@@ -150,19 +157,19 @@ function createPeerConnection() {
 		return;
 	}
 }
-
+var ecdsa_keys, elg_keys;
 var private_key, public_key, recieved_key, elg_private_key, elg_public_key, elg_recieved_key;
 //both sides need to generate key pairs from elgamal
 //public keys need to be shared
 function GenerateKeys()
 {
-	var keys, elg_keys;
-	keys = sjcl.ecc.ecdsa.generateKeys(192,0);
-	elg_keys = sjcl.ecc.elGamal.generateKeys(192,0);
-	private_key = keys.sec.get();
-	public_key = keys.pub.get();
+	
+	ecdsa_keys = sjcl.ecc.ecdsa.generateKeys(192,0);
+	elg_keys = sjcl.ecc.elGamal.generateKeys(384,10);
+	private_key = ecdsa_keys.sec.get();
+	public_key = ecdsa_keys.pub.get().x;
 	elg_private_key = elg_keys.sec.get();
-	elg_public_key = elg_keys.pub.get();
+	elg_public_key = elg_keys.pub.get().x;
 }
 function generateAESkey()
 {
@@ -171,6 +178,15 @@ function generateAESkey()
 	for(var i=0; i < 32; i++)
 		AESkey += possible.charAt(Math.floor(Math.random() * possible.length));
 	return AESkey;
+}
+function EncryptAESKey()
+{
+	//		https://github.com/bitwiseshiftleft/sjcl/wiki/Asymmetric-Crypto#serializing-key-pairs
+	//Elg encrypt with AESkey and recieved elg key
+	//ecdsa key sign encrypted AES key, ecdsa private key
+	return AESkey;
+	//send key signature and encrypted AES key
+	//decrypt AES key after verifying it on other side 
 }
 function handleIceCandidate(event) {
 	console.log('icecandidate event: ', event);
