@@ -1,4 +1,4 @@
-'use strict';
+//'use strict';
 var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
@@ -55,7 +55,7 @@ var keydefined = false;
 socket.on('message', function(message) {
 	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("The Key Is"))
 	{
-		key = message.substr(10);
+		AESkey = message.substr(10);
 		keydefined = true;
 	}
 	console.log('Client received message:', message);
@@ -109,10 +109,6 @@ if (location.hostname !== 'localhost') {
 		'https://computeengineondemand.appspot.com/turn?username=41784574&key=4080218913'
 	);
 }
-else
-{
-	
-}
 function maybeStart() {
 	console.log('>>>>>>> maybeStart() ', isStarted, localStream, isChannelReady);
 	if (!isStarted && typeof localStream !== 'undefined' && isChannelReady) {
@@ -122,7 +118,7 @@ function maybeStart() {
 		isStarted = true;
 		console.log('isInitiator', isInitiator);
 		if (isInitiator) {
-			sendMessage("The Key Is"+key);
+			sendMessage("The Key Is"+AESkey);
 			doCall();
 		}
 		else
@@ -135,7 +131,7 @@ window.onbeforeunload = function() {
 	sendMessage('bye');
 };
 /////////////////////////////////////////////////////////
-var key;
+var AESkey;
 function createPeerConnection() {
 	try {
 		pc = new RTCPeerConnection(null);
@@ -145,21 +141,36 @@ function createPeerConnection() {
 		console.log('Created RTCPeerConnnection');
 		if(isInitiator)
 		{
-			key = generatesessionkey();
+			AESkey = generateAESkey();
 		}
+		GenerateKeys();
 	} catch (e) {
 		console.log('Failed to create PeerConnection, exception: ' + e.message);
 		alert('Cannot create RTCPeerConnection object.');
 		return;
 	}
 }
-function generatesessionkey()
+
+var private_key, public_key, recieved_key, elg_private_key, elg_public_key, elg_recieved_key;
+//both sides need to generate key pairs from elgamal
+//public keys need to be shared
+function GenerateKeys()
 {
-	var key = "";
+	var keys, elg_keys;
+	keys = sjcl.ecc.ecdsa.generateKeys(192,0);
+	elg_keys = sjcl.ecc.elGamal.generateKeys(192,0);
+	private_key = keys.sec.get();
+	public_key = keys.pub.get();
+	elg_private_key = elg_keys.sec.get();
+	elg_public_key = elg_keys.pub.get();
+}
+function generateAESkey()
+{
+	var AESkey = "";
 	var possible = "0a1b2c3d4f5e6789";
 	for(var i=0; i < 32; i++)
-		key += possible.charAt(Math.floor(Math.random() * possible.length));
-	return key;
+		AESkey += possible.charAt(Math.floor(Math.random() * possible.length));
+	return AESkey;
 }
 function handleIceCandidate(event) {
 	console.log('icecandidate event: ', event);
@@ -224,7 +235,8 @@ var iv="";//must be in hexadecimal
 function AesEncrypt(plaintext)
 {
 	iv = getiv();
-	var aes_encrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));//encrypter
+	storeinsessionStorage(iv);
+	var aes_encrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(AESkey));//encrypter
 	plaintext = sjcl.codec.utf8String.toBits(plaintext);
 	var ciphertext = sjcl.mode.cbc.encrypt(aes_encrypter, plaintext, sjcl.codec.hex.toBits(iv));
 	return iv+""+ciphertext;
@@ -240,11 +252,7 @@ function getiv()//128 bytes = 32 hex digits long 16^32 combinations
 	if(alreadyused)
 		getiv();
 	else
-	{
-		//store testiv in database
-		storeinsessionStorage(testiv);
 		return testiv;
-	}
 }
 function checksessionStorage(test)
 {
@@ -252,12 +260,8 @@ function checksessionStorage(test)
 	{
 		var ivarr = sessionStorage.getItem("IV").split(",");
 		for(var i=0;i<ivarr.length;i++)
-		{
 			if(ivarr===test)
-			{
 				return true;
-			}
-		}
 	}
 	return false;
 }
@@ -270,14 +274,12 @@ function storeinsessionStorage(iv)
 }
 function AesDecrypt(ciphertext)
 {
-	var aes_decrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(key));//decrypter
+	var aes_decrypter = new sjcl.cipher.aes(sjcl.codec.hex.toBits(AESkey));//decrypter
 	iv=ciphertext.substr(0,32);//get iv seperated from cphertext
 	ciphertext = ciphertext.substr(32).split(",");//split into an array rather than a String also seperate from iv
 	var plaintext = sjcl.mode.cbc.decrypt(aes_decrypter, ciphertext, sjcl.codec.hex.toBits(iv));
 	plaintext = sjcl.codec.utf8String.fromBits(plaintext);//convert from the bits that decrypt gives to a String
-	//store iv
-	if(checksessionStorage(iv))
-		storeinsessionStorage(iv);
+	storeinsessionStorage(iv);
 	return plaintext;
 }
 function doAnswer() {
