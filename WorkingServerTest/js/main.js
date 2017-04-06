@@ -1,4 +1,4 @@
-//'use strict';
+'use strict';
 var isChannelReady = false;
 var isInitiator = false;
 var isStarted = false;
@@ -6,6 +6,8 @@ var localStream;
 var pc;
 var remoteStream;
 var turnReady;
+var AESkeyencrypted;
+var signature;
 var pcConfig = {
 	'iceServers': [{
 		'url': 'stun:stun.l.google.com:19302'
@@ -51,17 +53,41 @@ function sendMessage(message) {
 	socket.emit('message', message);
 }
 // This client receives a message
-var AESkeydefined = false, ELGReceiveddefined = false;
+var aesencrypteddefined = false, signaturedefined = false, ecdsapubdefined = false;
 socket.on('message', function(message) {
+	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("reg pub Is"))
+	{
+		serialized_public_recieved_key = message.substr(10);
+		ecdsapubdefined = true;
+		if(aesencrypteddefined && signaturedefined)
+		{
+			AESkey = verifyanddecryptAES();
+		}
+	}
 	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("The Key Is"))
 	{
-		AESkey = message.substr(10);
-		AESkeydefined = true;
+		AESkeyencrypted = message.substr(10);
+		aesencrypteddefined = true;
+		if(signaturedefined && ecdsapubdefined)
+		{
+			AESkey = verifyanddecryptAES();
+		}
 	}
-	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("Elg pub Is"))
+	if(typeof message === "string" && !isInitiator && message.substr(0,10)===("The Sig Is"))
 	{
-		elg_recieved_key = message.substr(10);
-		ELGReceiveddefined = true;
+		signature = message.substr(10).split(",");
+		signaturedefined = true;
+		if(aesencrypteddefined && ecdsapubdefined)
+		{
+			AESkey = verifyanddecryptAES();
+		}
+	}
+	if(typeof message === "string" && isInitiator && message.substr(0,10)===("Elg pub Is"))
+	{
+		serialized_elg_recieved_key = message.substr(10);
+		AESkeyencrypted = EncryptAESKey();
+		sendMessage("The Key Is" + AESkeyencrypted);
+		sendMessage("The Sig Is" + signature);
 	}
 	console.log('Client received message:', message);
 	if (message === 'got user media') {
@@ -123,12 +149,10 @@ function maybeStart() {
 		isStarted = true;
 		console.log('isInitiator', isInitiator);
 		if (isInitiator) {
-			sendMessage("The Key Is"+AESkey);
 			doCall();
 		}
 		else
 		{
-			sendMessage("Elg pub Is"+elg_public_key);
 			doCall();
 		}
 	}
@@ -145,31 +169,39 @@ function createPeerConnection() {
 		pc.onaddstream = handleRemoteStreamAdded;
 		pc.onremovestream = handleRemoteStreamRemoved;
 		console.log('Created RTCPeerConnnection');
-		if(isInitiator)
-		{
-			AESkey = generateAESkey();
-			AESkey = EncryptAESKey();
-		}
-		GenerateKeys();
 	} catch (e) {
 		console.log('Failed to create PeerConnection, exception: ' + e.message);
 		alert('Cannot create RTCPeerConnection object.');
 		return;
 	}
+	GenerateKeys();
+	if(isInitiator)
+	{
+		AESkey = generateAESkey();
+		sendMessage("reg pub Is"+serialized_public_key);
+	}
+	else
+	{
+		sendMessage("Elg pub Is"+serialized_elg_public_key);
+	}
 }
-var ecdsa_keys, elg_keys;
-var private_key, public_key, recieved_key, elg_private_key, elg_public_key, elg_recieved_key;
+var private_key, public_key, recieved_key, elg_private_key, elg_public_key, elg_recieved_key, 
+	serialized_public_key, serialized_elg_public_key, serialized_elg_recieved_key, serialized_public_recieved_key;
 //both sides need to generate key pairs from elgamal
 //public keys need to be shared
+
+//to unserialize and get key on other side
+var ecdsa_keys, elg_keys;
 function GenerateKeys()
 {
-	
-	ecdsa_keys = sjcl.ecc.ecdsa.generateKeys(192,0);
-	elg_keys = sjcl.ecc.elGamal.generateKeys(384,10);
+	ecdsa_keys = new sjcl.ecc.ecdsa.generateKeys(256);
+	elg_keys = new sjcl.ecc.elGamal.generateKeys(256);
 	private_key = ecdsa_keys.sec.get();
-	public_key = ecdsa_keys.pub.get().x;
+	public_key = ecdsa_keys.pub.get();
 	elg_private_key = elg_keys.sec.get();
-	elg_public_key = elg_keys.pub.get().x;
+	elg_public_key = elg_keys.pub.get();
+	serialized_public_key = sjcl.codec.base64.fromBits(public_key.x.concat(public_key.y));
+	serialized_elg_public_key = sjcl.codec.base64.fromBits(elg_public_key.x.concat(elg_public_key.y));
 }
 function generateAESkey()
 {
@@ -181,12 +213,37 @@ function generateAESkey()
 }
 function EncryptAESKey()
 {
+	elg_recieved_key = new sjcl.ecc.elGamal.publicKey(
+		sjcl.ecc.curves.c256, 
+		sjcl.codec.base64.toBits(serialized_elg_recieved_key)
+	);//get other elgamal public key
 	//		https://github.com/bitwiseshiftleft/sjcl/wiki/Asymmetric-Crypto#serializing-key-pairs
 	//Elg encrypt with AESkey and recieved elg key
 	//ecdsa key sign encrypted AES key, ecdsa private key
-	return AESkey;
+	AESkeyencrypted = sjcl.encrypt(elg_recieved_key, AESkey);
+	signature = ecdsa_keys.sec.sign(sjcl.hash.sha256.hash(AESkeyencrypted));
+	var ok = ecdsa_keys.pub.verify(sjcl.hash.sha256.hash(AESkeyencrypted), signature);
+	return AESkeyencrypted;
 	//send key signature and encrypted AES key
 	//decrypt AES key after verifying it on other side 
+}
+function verifyanddecryptAES()
+{
+	try{
+		recieved_key = new sjcl.ecc.ecdsa.publicKey(
+			sjcl.ecc.curves.c256, 
+			sjcl.codec.base64.toBits(serialized_public_recieved_key)
+		);
+		var ok = recieved_key.verify(sjcl.hash.sha256.hash(AESkeyencrypted), signature);
+		var pt = sjcl.decrypt(elg_keys.sec, AESkeyencrypted);
+		return pt;
+	}
+	catch(e)
+	{
+		alert("signature wrong");
+		console.log("signature wrong\nexception:" + e);
+		//hangup();
+	}
 }
 function handleIceCandidate(event) {
 	console.log('icecandidate event: ', event);
